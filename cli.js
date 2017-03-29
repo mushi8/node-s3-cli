@@ -18,6 +18,8 @@ var argOptions = {
     'region': 'us-east-1',
     'default-mime-type': null,
     'add-header': null,
+    'access_key': null,
+    'secret_key' : null
   },
   'boolean': [
     'recursive',
@@ -53,30 +55,31 @@ barfOnUnexpectedArgs();
 
 var client;
 
-fs.readFile(args.config, {encoding: 'utf8'}, function(err, contents) {
-  if (err) {
-    if (process.env.AWS_SECRET_KEY && process.env.AWS_ACCESS_KEY) {
-      setup(process.env.AWS_SECRET_KEY, process.env.AWS_ACCESS_KEY);
-    } else {
-      console.error("This utility needs a config file formatted the same as for s3cmd");
-      console.error("or AWS_SECRET_KEY and AWS_ACCESS_KEY environment variables.");
-      process.exit(1);
-    }
-    return;
-  }
-  var config = ini.parse(contents);
-  var accessKeyId, secretAccessKey;
-  if (config && config.default) {
-    accessKeyId = config.default.access_key;
-    secretAccessKey = config.default.secret_key;
-  }
-  if (!secretAccessKey || !accessKeyId) {
-    console.error("Config file missing access_key or secret_key");
-    process.exit(1);
-    return;
-  }
-  setup(secretAccessKey, accessKeyId);
-});
+if (fs.existsSync(args.config)) {
+    fs.readFile(args.config, {encoding: 'utf8'}, function (err, contents) {
+        if (err) {
+            if (process.env.AWS_SECRET_KEY && process.env.AWS_ACCESS_KEY) {
+                setup(process.env.AWS_SECRET_KEY, process.env.AWS_ACCESS_KEY);
+            }
+         }
+    });
+}
+//var config = ini.parse(contents);
+var accessKeyId, secretAccessKey;
+if (args['access_key'] && args['secret_key']){
+accessKeyId = args['access_key'];
+secretAccessKey = args['secret_key']
+}else if (config && config.default) {
+accessKeyId = config.default.access_key;
+secretAccessKey = config.default.secret_key;
+}
+if (!secretAccessKey || !accessKeyId) {
+console.error("Config file missing access_key or secret_key");
+process.exit(1);
+return;
+}
+setup(secretAccessKey, accessKeyId);
+
 
 function setup(secretAccessKey, accessKeyId) {
   var maxSockets = parseInt(args['max-sockets'], 10);
