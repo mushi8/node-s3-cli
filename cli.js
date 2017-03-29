@@ -365,7 +365,8 @@ function setUpProgress(o, notBytes, doneText) {
   var progressInterval = setInterval(printFn, 100);
   o.on('end', function() {
     clearInterval(progressInterval);
-    process.stderr.write("\n" + doneText + "\n");
+    process.stdout.write("\n" + doneText + "\n");
+    process.exit(0);
   });
   o.on('error', function(err) {
     clearInterval(progressInterval);
