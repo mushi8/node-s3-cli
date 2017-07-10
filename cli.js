@@ -77,7 +77,8 @@ if (args['access_key'] && args['secret_key']) {
             }
             return;
         }
-        var config = ini.parse(contents);
+        console.log('Using Config file: ' + args.config);
+        config = ini.parse(contents);
         var accessKeyId, secretAccessKey;
         if (config && config.default) {
             accessKeyId = config.default.access_key;
@@ -99,6 +100,7 @@ function setup(secretAccessKey, accessKeyId, region) {
     if (region) {
         aws_region = region;
     } else if (process.env.AWS_REGION) {
+        console.log('using AWS_REGION env');
         aws_region = process.env.AWS_REGION;
     }
     if (config && config.default) {
@@ -111,6 +113,7 @@ function setup(secretAccessKey, accessKeyId, region) {
     http.globalAgent.maxSockets = maxSockets;
     https.globalAgent.maxSockets = maxSockets;
     if (proxy) {
+        console.log('Using Proxy: ' + proxy);
         client = s3.createClient({
             s3Options: {
                 accessKeyId: accessKeyId,
@@ -342,7 +345,7 @@ function cmdMv() {
     var s3Params = {
         CopySource: sourceParts.bucket + '/' + sourceParts.key,
         Bucket: destParts.bucket,
-        Key: destParts.key,
+        Key: destParts.key
     };
 
     var mover = client.moveObject(s3Params);
@@ -368,7 +371,7 @@ function parseS3Url(s3Url) {
     }
     return {
         bucket: match[1],
-        key: match[2],
+        key: match[2]
     };
 }
 
