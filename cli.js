@@ -104,11 +104,7 @@ function setup(secretAccessKey, accessKeyId, region) {
     if (config && config.default) {
         if (config.default.proxy_host && config.default.proxy_port) {
             proxy = true;
-            var prefix = '';
-            if (!config.default.proxy_host.contains('http')){
-                prefix = 'https://';
-            }
-            var prox = prefix + config.default.proxy_host + ':' + config.default.proxy_port
+            var prox = config.default.proxy_host + ':' + config.default.proxy_port
         }
     }
     var maxSockets = parseInt(args['max-sockets'], 10);
