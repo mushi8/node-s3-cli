@@ -11,19 +11,21 @@ var url = require('url');
 var http = require('http');
 var https = require('https');
 var ProxyAgent = require('https-proxy-agent');
+var AWS = require('aws-sdk'); // https://www.npmjs.com/package/aws-sdk
+
 
 var argOptions = {
     'default': {
         'config': path.join(osenv.home(), '.s3cfg'),
         'delete-removed': false,
         'max-sockets': 20,
-        'region': 'us-east-1',
+        'region': null,
         'default-mime-type': null,
         'add-header': null,
         'access_key': null,
         'secret_key': null,
-        'proxy_host':null,
-        'proxy_port':null
+        'proxy_host': null,
+        'proxy_port': null
     },
     'boolean': [
         'recursive',
@@ -63,13 +65,14 @@ var config = null;
 if (args['access_key'] && args['secret_key']) {
     accessKeyId = args['access_key'];
     secretAccessKey = args['secret_key'];
-    setup(accessKeyId, secretAccessKey);
+    region = args['region'];
+    setup(secretAccessKey, accessKeyId, region);
 
 } else {
     fs.readFile(args.config, {encoding: 'utf8'}, function (err, contents) {
         if (err) {
             if (process.env.AWS_SECRET_KEY && process.env.AWS_ACCESS_KEY) {
-                setup(process.env.AWS_SECRET_KEY, process.env.AWS_ACCESS_KEY);
+                setup(process.env.AWS_SECRET_KEY, process.env.AWS_ACCESS_KEY, process.env.AWS_REGION);
             } else {
                 console.error("This utility needs a config file formatted the same as for s3cmd");
                 console.error("or AWS_SECRET_KEY and AWS_ACCESS_KEY environment variables.");
@@ -100,8 +103,10 @@ function setup(secretAccessKey, accessKeyId, region) {
     if (region) {
         aws_region = region;
     } else if (process.env.AWS_REGION) {
-        console.log('using AWS_REGION env');
         aws_region = process.env.AWS_REGION;
+    } else {
+        console.error("AWS Region must be specified! (.s3cfg/env.AWS_REGION/--region)");
+        process.exit(1);
     }
     if (config && config.default) {
         if (config.default.proxy_host && config.default.proxy_port) {
@@ -112,27 +117,32 @@ function setup(secretAccessKey, accessKeyId, region) {
     var maxSockets = parseInt(args['max-sockets'], 10);
     http.globalAgent.maxSockets = maxSockets;
     https.globalAgent.maxSockets = maxSockets;
+    var s3Options;
     if (proxy) {
         console.log('Using Proxy: ' + proxy);
-        client = s3.createClient({
-            s3Options: {
-                accessKeyId: accessKeyId,
-                secretAccessKey: secretAccessKey,
-                sslEnabled: !args.insecure,
-                region: aws_region,
-                httpOptions: {agent: new ProxyAgent(prox)}
-            }
-        });
-    }else{
-        client = s3.createClient({
-            s3Options: {
-                accessKeyId: accessKeyId,
-                secretAccessKey: secretAccessKey,
-                sslEnabled: !args.insecure,
-                region: aws_region
-            }
-        });
+        s3Options = {
+            accessKeyId: accessKeyId,
+            secretAccessKey: secretAccessKey,
+            sslEnabled: !args.insecure,
+            region: aws_region,
+            httpOptions: {agent: new ProxyAgent(prox)}
+        };
+    } else {
+        s3Options = {
+            accessKeyId: accessKeyId,
+            secretAccessKey: secretAccessKey,
+            sslEnabled: !args.insecure,
+            region: aws_region
+        };
     }
+    var awsS3Client = new AWS.S3(s3Options);
+
+    var options = {
+        s3Client: awsS3Client
+        // more options available. See API docs below.
+    };
+
+    client = s3.createClient(options);
     var cmd = args._.shift();
     var fn = fns[cmd];
     if (!fn) fn = cmdHelp;
@@ -176,7 +186,7 @@ function cmdSync() {
         getS3Params: getS3Params,
         localDir: localDir,
         s3Params: s3Params,
-        defaultContentType: getDefaultContentType(),
+        defaultContentType: getDefaultContentType()
     };
     var syncer = method.call(client, params);
     setUpProgress(syncer);
@@ -185,7 +195,7 @@ function cmdSync() {
 function uploadGetS3Params(filePath, stat, callback) {
     //console.error("Uploading", filePath);
     callback(null, {
-        ContentType: getContentType(),
+        ContentType: getContentType()
     });
 }
 
@@ -204,8 +214,8 @@ function cmdList() {
         s3Params: {
             Bucket: parts.bucket,
             Prefix: parts.key,
-            Delimiter: recursive ? null : '/',
-        },
+            Delimiter: recursive ? null : '/'
+        }
     };
     var finder = client.listObjects(params);
     finder.on('data', function (data) {
@@ -234,7 +244,7 @@ function cmdDelete() {
     function doDeleteDir() {
         var params = {
             Bucket: parts.bucket,
-            Prefix: parts.key,
+            Prefix: parts.key
         };
         var deleter = client.deleteDir(params);
         setUpProgress(deleter, true);
@@ -246,9 +256,9 @@ function cmdDelete() {
             Delete: {
                 Objects: [
                     {
-                        Key: parts.key,
-                    },
-                ],
+                        Key: parts.key
+                    }
+                ]
             }
         };
         var deleter = client.deleteObjects(params);
@@ -272,13 +282,13 @@ function cmdPut() {
         Bucket: parts.bucket,
         Key: parts.key,
         ACL: acl,
-        ContentType: getContentType(),
+        ContentType: getContentType()
     };
     parseAddHeaders(s3Params);
     var params = {
         localFile: source,
         s3Params: s3Params,
-        defaultContentType: getDefaultContentType(),
+        defaultContentType: getDefaultContentType()
     };
     var uploader = client.uploadFile(params);
     var doneText;
@@ -308,8 +318,8 @@ function cmdGet() {
         localFile: dest,
         s3Params: {
             Bucket: parts.bucket,
-            Key: parts.key,
-        },
+            Key: parts.key
+        }
     };
     var downloader = client.downloadFile(params);
     setUpProgress(downloader);
@@ -325,7 +335,7 @@ function cmdCp() {
     var s3Params = {
         CopySource: sourceParts.bucket + '/' + sourceParts.key,
         Bucket: destParts.bucket,
-        Key: destParts.key,
+        Key: destParts.key
     };
 
     var copier = client.copyObject(s3Params);
@@ -386,7 +396,6 @@ function getContentType() {
 function getDefaultContentType() {
     return args['default-mime-type'] || null;
 }
-
 function getAcl() {
     var acl = null;
     if (args['acl-public']) {
@@ -522,6 +531,9 @@ function expectArgCount(min, max) {
     }
 }
 
+function getBucketLocation(bucket) {
+
+}
 // copied from Node.js path module for unix only
 function unixSplitPath(filename) {
     return splitPathRe.exec(filename).slice(1);
