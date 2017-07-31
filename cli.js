@@ -403,26 +403,26 @@ function getAcl() {
 function setUpProgress(o, notBytes, doneText) {
     var start = null;
     doneText = doneText || "done";
-    // var printFn = process.stderr.isTTY ? printProgress : noop;
-    // printFn();
-    // var progressInterval = setInterval(printFn, 100);
+    var printFn = process.stderr.isTTY ? printProgress : noop;
+    printFn();
+    var progressInterval = setInterval(printFn, 100);
     o.on('end', function () {
-        //clearInterval(progressInterval);
+        clearInterval(progressInterval);
         process.stdout.write("\n" + doneText + "\n");
         process.exit(0);
     });
     o.on('end', function () {
-        //clearInterval(progressInterval);
+        clearInterval(progressInterval);
         process.stdout.write("\n" + doneText + "\n");
         process.exit(0);
     });
     o.on('end', function () {
-        //clearInterval(progressInterval);
+        clearInterval(progressInterval);
         process.stdout.write("\n" + doneText + "\n");
         process.exit(0);
     });
     o.on('error', function (err) {
-        //clearInterval(progressInterval);
+        clearInterval(progressInterval);
         process.stderr.write("\nError: " + err.message + "\n");
         process.exit(1);
     });
