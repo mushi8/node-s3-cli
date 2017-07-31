@@ -135,7 +135,17 @@ function setup(secretAccessKey, accessKeyId, region) {
             region: aws_region
         };
     }
-    client = s3.createClient({s3Options:s3Options});
+    if (region.indexOf('eu') > -1){
+        var awsS3Client = new AWS.S3(s3Options);
+        var options = {
+            s3Client: awsS3Client
+            // more options available. See API docs below.
+        };
+        client = s3.createClient(options);
+        client.s3.addExpect100Continue = function() {};
+    }else{
+        client = s3.createClient({s3Options:s3Options})
+    }
     var cmd = args._.shift();
     var fn = fns[cmd];
     if (!fn) fn = cmdHelp;
@@ -406,16 +416,6 @@ function setUpProgress(o, notBytes, doneText) {
     var printFn = process.stderr.isTTY ? printProgress : noop;
     printFn();
     var progressInterval = setInterval(printFn, 100);
-    o.on('end', function () {
-        clearInterval(progressInterval);
-        process.stdout.write("\n" + doneText + "\n");
-        process.exit(0);
-    });
-    o.on('end', function () {
-        clearInterval(progressInterval);
-        process.stdout.write("\n" + doneText + "\n");
-        process.exit(0);
-    });
     o.on('end', function () {
         clearInterval(progressInterval);
         process.stdout.write("\n" + doneText + "\n");
