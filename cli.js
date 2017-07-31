@@ -142,7 +142,6 @@ function setup(secretAccessKey, accessKeyId, region) {
             // more options available. See API docs below.
         };
         client = s3.createClient(options);
-        client.s3.addExpect100Continue = function() {};
     }else{
         client = s3.createClient({s3Options:s3Options})
     }
@@ -293,6 +292,7 @@ function cmdPut() {
         s3Params: s3Params,
         defaultContentType: getDefaultContentType()
     };
+    client.s3.addExpect100Continue = function() {};
     var uploader = client.uploadFile(params);
     var doneText;
     if (acl === 'public-read') {
