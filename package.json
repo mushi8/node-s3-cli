@@ -15,7 +15,8 @@
     "s3": "~4.4.0",
     "human-size": "~1.1.0",
     "proxy-agent": "2.0.0",
-    "https-proxy-agent": "latest"
+    "https-proxy-agent": "latest",
+    "aws-sdk": "latest"
   },
   "devDependencies": {},
   "scripts": {
